@@ -1,6 +1,6 @@
-# UNICA · E-commerce
+# UNICA · Moda colombiana desde Medellín
 
-Tienda digital de UNICA, marca de ropa femenina de Medellín, Colombia. Experiencia en React, Vite y Tailwind CSS, con galería de las fotografías entregadas, selección de prendas y carrito con pedido por WhatsApp.
+Tienda digital de UNICA, marca colombiana nacida en Medellín. Su voz celebra la moda de aquí con orgullo, carácter y estilo propio, sin atribuir fabricación local a prendas cuyo origen no se ha verificado. Experiencia en React, Vite y Tailwind CSS, con galería de fotografías, selección de prendas y carrito con pedido por WhatsApp.
 
 ## Ejecutar localmente
 
@@ -35,6 +35,8 @@ python3 scripts/import_catalogo.py
 ```
 
 El importador organiza las 434 imágenes en 102 referencias y escribe los recursos web en `public/catalogo/`. Las ocho referencias con un precio escrito en el nombre de la foto aparecen en la selección comprable; las demás quedan como consulta. Los precios se transcriben como referencias históricas del material entregado: confirmar valor, talla, color y disponibilidad antes de publicar o aceptar el pedido.
+
+Las fotografías de origen se mantienen sin alterar para respetar el material recibido. En la revisión visual se encontraron algunas con marca de agua de Dola AI y logos de terceros; antes de usar una imagen en publicidad o confirmar que representa una prenda en inventario, verificar derechos de uso y correspondencia con el producto real.
 
 ## Plan de implementación
 

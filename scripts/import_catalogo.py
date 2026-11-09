@@ -10,6 +10,42 @@ OUTPUT = ROOT / "public/catalogo"
 IMAGE_PATTERN = re.compile(r"_(\d{2})\.(?:jpg|jpeg|png)$", re.IGNORECASE)
 DATE_PATTERN = re.compile(r"20\d{2}-\d{2}-\d{2}")
 PRICE_PATTERN = re.compile(r"(?<!\d)(\d{2,3}[.,]\d{3})(?!\d)")
+SIZE_PATTERN = re.compile(r"talla[_ ]+(?:[uú]nica|\d+)", re.IGNORECASE)
+PRESENTATION_NAMES = (
+    ("conjunto_manga_larga_hilo", "Conjunto manga larga", "Conjuntos"),
+    ("básica_awnd", "Básica AWND", "Blusas"),
+    ("buzo_licra_tipo", "Buzo Americana", "Blusas"),
+    ("body_tela_destellante", "Body destellante", "Bodies"),
+    ("vestido_disponible_azul", "Vestido disponible", "Vestidos"),
+    ("bluson_elaborado_tela_qatar", "Blusón Qatar", "Blusas"),
+    ("body_alo_tela_rib", "Body Alo Rib", "Bodies"),
+    ("ref_beirut", "Vestido Beirut", "Vestidos"),
+)
+MATERIALS = (
+    ("licra pesada", "Licra pesada"),
+    ("burda perchada", "Burda perchada"),
+    ("mallatex", "Mallatex"),
+    ("mayatex", "Mayatex"),
+    ("blonda", "Blonda"),
+    ("suplex", "Suplex"),
+    ("licra", "Licra"),
+    ("rib", "Rib"),
+    ("hilo", "Hilo"),
+    ("peluche", "Peluche"),
+    ("qatar", "Tela Qatar"),
+    ("destellante", "Tela destellante"),
+    ("seamless", "Tipo seamless"),
+    ("cuero", "Efecto cuero"),
+    ("pasifica", "Tela Pasifica"),
+)
+COLOR_WORDS = (
+    ("negro", "Negro"), ("negra", "Negro"), ("blanco", "Blanco"),
+    ("blanca", "Blanco"), ("azul", "Azul"), ("rosado", "Rosado"),
+    ("rosada", "Rosado"), ("rojo", "Rojo"), ("roja", "Rojo"),
+    ("verde", "Verde"), ("amarillo", "Amarillo"), ("amarilla", "Amarillo"),
+    ("café", "Café"), ("cafe", "Café"), ("lila", "Lila"),
+    ("morado", "Morado"), ("beige", "Beige"), ("naranja", "Naranja"),
+)
 
 
 def category_for(label):
@@ -26,7 +62,32 @@ def category_for(label):
         return "Bodies"
     if "falda" in value:
         return "Faldas"
-    return "Colección"
+    return "Moda"
+
+
+def presentation_for(filename, title):
+    value = filename.casefold()
+    for marker, name, category in PRESENTATION_NAMES:
+        if marker in value:
+            return name, category
+    return title, category_for(title)
+
+
+def details_for(filename):
+    value = filename.casefold()
+    details = []
+    size_match = SIZE_PATTERN.search(value)
+    if size_match:
+        size = size_match.group(0).replace("_", " ").title()
+        details.append("Talla " + size.split(maxsplit=1)[-1])
+    for marker, label in MATERIALS:
+        if marker in value:
+            details.append(label)
+    colors = []
+    for marker, label in COLOR_WORDS:
+        if marker in value and label not in colors:
+            colors.append(label)
+    return details, colors
 
 
 def label_for(filename):
@@ -54,10 +115,16 @@ def main():
             filename = Path(name).name
             match = IMAGE_PATTERN.search(filename)
             group_key = filename[:match.start()] if match else filename
+            source_title = label_for(filename)
+            title, category = presentation_for(filename, source_title)
+            details, colors = details_for(filename)
             group = groups.setdefault(group_key, {
                 "id": f"ref-{len(groups) + 1:03}",
-                "title": label_for(filename),
-                "category": category_for(label_for(filename)),
+                "title": title,
+                "category": category,
+                "sourceTitle": source_title,
+                "details": details,
+                "colors": colors,
                 "date": (DATE_PATTERN.search(filename).group(0) if DATE_PATTERN.search(filename) else ""),
                 "photos": [],
                 "price": None,
@@ -72,7 +139,7 @@ def main():
 
     catalogue = sorted(
         groups.values(),
-        key=lambda item: (item["title"] == "Nueva referencia", item["category"] == "Colección"),
+        key=lambda item: (item["title"] == "Nueva referencia", item["category"] == "Moda"),
     )
     (OUTPUT / "catalogo.json").write_text(
         json.dumps(catalogue, ensure_ascii=False, separators=(",", ":")),

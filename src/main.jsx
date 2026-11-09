@@ -15,7 +15,6 @@ import {
   Plus,
   Search,
   ShoppingBag,
-  Sparkles,
   Sun,
   Trash2,
   X,
@@ -23,9 +22,11 @@ import {
 import { createRoot } from 'react-dom/client'
 import logoUrl from '../assets/img/logo-unica-client.png'
 import './index.css'
+import './monochrome.css'
 
 const INSTAGRAM_URL = 'https://www.instagram.com/unica__________________/'
-const CATEGORIES = ['Todo', 'Vestidos', 'Enterizos', 'Conjuntos', 'Blusas', 'Bodies']
+const CATEGORIES = ['Todo', 'Vestidos', 'Enterizos', 'Conjuntos', 'Blusas', 'Bodies', 'Moda']
+const FEATURED_IDS = ['ref-100', 'ref-057', 'ref-013', 'ref-039', 'ref-074', 'ref-055', 'ref-084', 'ref-005']
 const formatPrice = (value) => new Intl.NumberFormat('es-CO', {
   style: 'currency',
   currency: 'COP',
@@ -33,16 +34,13 @@ const formatPrice = (value) => new Intl.NumberFormat('es-CO', {
 }).format(value)
 
 const productName = (item) => {
-  const name = item.title.toLowerCase()
-  if (name.includes('manga larga hilo')) return 'Conjunto Hilo'
-  if (name.includes('básica awnd')) return 'Básica AWND'
-  if (name.includes('buzo licra')) return 'Buzo Americana'
-  if (name.includes('destellante')) return 'Body Destellante'
-  if (name.includes('vestido disponible')) return 'Vestido Aura'
-  if (name.includes('tela qatar')) return 'Blusón Qatar'
-  if (name.includes('body alo')) return 'Body Alo'
-  if (name.includes('beirut')) return 'Vestido Beirut'
   return item.title
+}
+
+const productDetails = (item) => {
+  const details = item.details?.slice(0, 2) || []
+  if (item.colors?.length && details.length < 2) details.push(`Colores: ${item.colors.join(', ')}`)
+  return details.join(' · ') || 'Detalles por confirmar'
 }
 
 function whatsappUrl(message) {
@@ -69,6 +67,8 @@ function App() {
   const [selectedPhoto, setSelectedPhoto] = useState(0)
   const [cartOpen, setCartOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [heroSlide, setHeroSlide] = useState(0)
+  const [introPhase, setIntroPhase] = useState('entering')
 
   useEffect(() => {
     fetch('/catalogo/catalogo.json')
@@ -81,8 +81,18 @@ function App() {
   }, [])
 
   useEffect(() => {
+    const leaveTimer = window.setTimeout(() => setIntroPhase('leaving'), 780)
+    const finishTimer = window.setTimeout(() => setIntroPhase('done'), 1120)
+    return () => {
+      window.clearTimeout(leaveTimer)
+      window.clearTimeout(finishTimer)
+    }
+  }, [])
+
+  useEffect(() => {
     document.documentElement.dataset.theme = theme
     localStorage.setItem('unica-theme', theme)
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#080808' : '#ffffff')
   }, [theme])
 
   useEffect(() => {
@@ -129,22 +139,37 @@ function App() {
   }, [archiveCategory, catalogue, visibleArchive])
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0)
   const cartTotal = cart.reduce((total, item) => total + item.price * item.quantity, 0)
-  const heroItem = catalogue.find((item) => item.category === 'Enterizos') || catalogue.find((item) => item.category !== 'Colección')
+  const featuredProducts = useMemo(() => FEATURED_IDS
+    .map((id) => pricedItems.find((item) => item.id === id))
+    .filter(Boolean), [pricedItems])
+  const heroSlides = featuredProducts.slice(0, 4)
+  const heroItem = heroSlides[heroSlide % Math.max(heroSlides.length, 1)]
 
-  const addToCart = (item) => {
+  useEffect(() => {
+    if (heroSlides.length < 2) return undefined
+    const interval = window.setInterval(() => {
+      setHeroSlide((current) => (current + 1) % heroSlides.length)
+    }, 5600)
+    return () => window.clearInterval(interval)
+  }, [heroSlides.length])
+
+  const addToCart = (item, variants = {}) => {
     const name = productName(item)
+    const variant = [variants.size, variants.color && `Color ${variants.color}`].filter(Boolean).join(' · ')
+    const lineId = `${item.id}-${variant || 'estandar'}`
     setCart((current) => {
-      const existing = current.find((entry) => entry.id === item.id)
+      const existing = current.find((entry) => entry.id === lineId)
       if (existing) {
-        return current.map((entry) => entry.id === item.id
+        return current.map((entry) => entry.id === lineId
           ? { ...entry, quantity: entry.quantity + 1 }
           : entry)
       }
       return [...current, {
-        id: item.id,
+        id: lineId,
         title: name,
         price: item.price,
         image: item.photos[0],
+        variant,
         quantity: 1,
       }]
     })
@@ -158,9 +183,9 @@ function App() {
       .filter((item) => item.quantity > 0))
   }
 
-  const checkoutMessage = `Hola, UNICA. Quiero pedir:\n${cart
-    .map((item) => `• ${item.title} x${item.quantity} — ${formatPrice(item.price * item.quantity)}`)
-    .join('\n')}\n\nTotal de prendas: ${cartCount}\nSubtotal: ${formatPrice(cartTotal)}\n\n¿Me confirman disponibilidad, envío y medios de pago?`
+  const checkoutMessage = `Hola, UNICA. Quiero pedir estas prendas:\n${cart
+    .map((item) => `• ${item.title}${item.variant ? ` · ${item.variant}` : ''} x${item.quantity} — ${formatPrice(item.price * item.quantity)}`)
+    .join('\n')}\n\nPrendas: ${cartCount}\nSubtotal: ${formatPrice(cartTotal)}\n\n¿Me confirman disponibilidad, envío y medios de pago? ¡Gracias!`
 
   const openItem = (item) => {
     setSelectedItem(item)
@@ -169,11 +194,19 @@ function App() {
 
   return (
     <div className="site-shell">
+      {introPhase !== 'done' && (
+        <div className={`brand-intro ${introPhase}`} role="status" aria-label="UNICA, moda colombiana desde Medellín">
+          <span className="intro-location">MEDELLÍN · COLOMBIA</span>
+          <span className="intro-word" aria-hidden="true">{'UNICA'.split('').map((letter, index) => <span key={letter} style={{ '--letter-index': index }}>{letter}</span>)}</span>
+          <span className="intro-progress"><span /></span>
+          <span className="intro-caption">MODA DE AQUÍ · ESTILO PROPIO</span>
+        </div>
+      )}
       <div className="announcement-bar">
-        <span>Medellín, Colombia</span>
-        <span className="announcement-separator">✳</span>
-        <span>Una forma muy tuya de vestir</span>
-        <a href="#coleccion">Descubrir la colección <ArrowRight size={12} /></a>
+        <span>De Medellín, Colombia</span>
+        <span className="announcement-separator">/</span>
+        <span>MODA COLOMBIANA · ESTILO PROPIO</span>
+        <a href="#coleccion">Viste lo nuestro <ArrowRight size={14} /></a>
       </div>
 
       <header className="site-header glass-panel">
@@ -182,7 +215,7 @@ function App() {
         </a>
         <nav className={`main-nav ${menuOpen ? 'is-open' : ''}`} aria-label="Navegación principal">
           <a onClick={() => setMenuOpen(false)} href="#coleccion">Colección</a>
-          <a onClick={() => setMenuOpen(false)} href="#historia">La marca</a>
+          <a onClick={() => setMenuOpen(false)} href="#historia">Nuestra raíz</a>
           <a onClick={() => setMenuOpen(false)} href="#archivo">Archivo</a>
           <a onClick={() => setMenuOpen(false)} href="#instagram">Instagram</a>
         </nav>
@@ -209,51 +242,43 @@ function App() {
       <main>
         <section className="hero-section page-width" id="inicio">
           <div className="hero-copy reveal">
-            <p className="eyebrow"><span className="eyebrow-dot" /> Ropa femenina, hecha para sentir</p>
-            <h1>Vestir como<br />se siente <em>ser tú.</em></h1>
-            <p className="hero-description">Piezas con carácter para los días que se sienten tuyos. De Medellín para acompañarte donde vayas.</p>
+            <p className="eyebrow"><span className="eyebrow-dot" /> ORGULLO COLOMBIANO · MODA EN MEDELLÍN</p>
+            <h1>De Medellín,<br />para vestir <em>Colombia.</em></h1>
+            <p className="hero-description">Moda con carácter, nacida en Medellín. Elige tu próximo look y lleva tu estilo a tu manera, estés donde estés.</p>
             <div className="hero-cta-row">
-              <a className="button button-primary" href="#coleccion">Explorar colección <ArrowUpRight size={16} /></a>
-              <a className="text-link" href="#historia">Conoce UNICA <ArrowDown size={14} /></a>
+              <a className="button button-primary" href="#coleccion">Comprar moda colombiana <ArrowUpRight size={18} /></a>
+              <a className="text-link" href="#historia">Conoce nuestra raíz <ArrowDown size={16} /></a>
             </div>
-            <div className="hero-note"><span>01</span><span>Prendas elegidas, hechas para durar más que un momento.</span></div>
+            <div className="hero-note"><span>{String(heroSlide + 1).padStart(2, '0')} / {String(Math.max(heroSlides.length, 4)).padStart(2, '0')}</span><span>Estilo con origen colombiano</span></div>
           </div>
 
           <div className="hero-visual reveal">
             <div className="hero-image-wrap">
-              {heroItem?.photos?.[0] && <img src={heroItem.photos[0]} alt={`${heroItem.title}, colección UNICA`} fetchPriority="high" />}
+              {heroItem?.photos?.[0] && <img key={heroItem.id} src={heroItem.photos[0]} alt={`${heroItem.title}, ${heroItem.category.toLowerCase()} de UNICA`} fetchPriority="high" />}
               <div className="hero-image-label glass-panel">
-                <span className="hero-label-icon"><Sparkles size={16} /></span>
-                <div><strong>Lo nuevo</strong><span>La selección UNICA</span></div>
-                <a href="#coleccion" aria-label="Ver lo nuevo"><ArrowUpRight size={18} /></a>
+                <span className="hero-label-icon">0{heroSlide + 1}</span>
+                <div><strong>{heroItem?.title || 'Moda UNICA'}</strong><span>{heroItem?.category || 'Colección'}{heroItem?.price ? ` · ${formatPrice(heroItem.price)}` : ''}</span></div>
+                <a href="#coleccion" aria-label="Ver esta prenda"><ArrowUpRight size={20} /></a>
               </div>
             </div>
-            <div className="hero-index"><span>01</span><span className="index-line" /><span>COLECCIÓN ACTUAL</span></div>
-            <div className="hero-orbit" aria-hidden="true">U</div>
+            <div className="hero-index"><span>UNICA</span><span className="index-line" /><span>ESTILO COLOMBIANO</span></div>
+            <div className="hero-pagination" aria-label="Selección destacada">
+              {heroSlides.map((item, index) => <button key={item.id} className={index === heroSlide ? 'active' : ''} onClick={() => setHeroSlide(index)} aria-label={`Ver ${item.title}`} />)}
+            </div>
           </div>
-          <a className="scroll-hint" href="#coleccion" aria-label="Desplazarse a la colección"><span />Desliza para descubrir</a>
+          <a className="scroll-hint" href="#coleccion" aria-label="Ver la moda de UNICA"><span />Descubre la colección</a>
         </section>
-
-        <div className="marquee-strip" aria-label="UNICA · Diseñado en Medellín · Para tu manera de ser">
-          <div className="marquee-track" aria-hidden="true">
-            {[0, 1].map((copy) => (
-              <span className="marquee-copy" key={copy}>
-                UNICA <i>✳</i> Vestir sin pedir permiso <i>✳</i> Medellín, Colombia <i>✳</i> Ser tú, siempre <i>✳</i>
-              </span>
-            ))}
-          </div>
-        </div>
 
         <section className="collection-section page-width section-pad" id="coleccion">
           <div className="section-heading reveal">
             <div>
-              <p className="eyebrow">Selección UNICA <span className="eyebrow-line" /></p>
-              <h2>Lo que te <em>mueve.</em></h2>
-              <p className="section-intro">Referencias de la colección, para encontrar esa que habla de ti.</p>
+              <p className="eyebrow">01 / ORGULLO QUE SE VISTE <span className="eyebrow-line" /></p>
+              <h2>Moda de aquí.<br /><em>Estilo propio.</em></h2>
+              <p className="section-intro">Descubre prendas de una marca nacida en Medellín y encuentra la que va contigo.</p>
             </div>
             <div className="collection-controls">
-              <label className="search-box"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar prenda" aria-label="Buscar prenda" /></label>
-              <a className="text-link all-archive-link" href="#archivo">Ver todo el archivo <ArrowUpRight size={14} /></a>
+              <label className="search-box"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Busca tu próximo look" aria-label="Buscar prendas de UNICA" /></label>
+              <a className="text-link all-archive-link" href="#archivo">Descubre más moda <ArrowUpRight size={14} /></a>
             </div>
           </div>
 
@@ -266,20 +291,26 @@ function App() {
           {filteredProducts.length ? (
             <div className="product-grid">
               {filteredProducts.map((item, index) => (
-                <ProductCard key={item.id} item={item} index={index} onOpen={openItem} />
+                <ProductCard key={item.id} item={item} index={index} onOpen={openItem} onAdd={() => addToCart(item)} />
               ))}
             </div>
           ) : (
             <div className="empty-products"><Search size={23} /><p>{catalogue.length ? 'No encontramos prendas con ese filtro.' : 'Estamos preparando la colección.'}</p><button className="text-link" onClick={() => { setActiveCategory('Todo'); setSearch('') }}>Ver todas</button></div>
           )}
-          <p className="price-note"><span>*</span> Precios de referencia tomados de publicaciones de UNICA; disponibilidad y valor final se confirman por WhatsApp.</p>
+          <p className="price-note"><span>*</span> Valores compartidos en publicaciones de UNICA; confirma precio y disponibilidad antes de pedir.</p>
         </section>
+
+        <div className="marquee-strip" aria-label="UNICA · Moda colombiana · Desde Medellín">
+          <div className="marquee-track" aria-hidden="true">
+            {[0, 1].map((copy) => <span className="marquee-copy" key={copy}>MODA DE AQUÍ <i>✳</i> MEDELLÍN, COLOMBIA <i>✳</i> ORGULLO QUE SE VISTE <i>✳</i> ESTILO PROPIO <i>✳</i></span>)}
+          </div>
+        </div>
 
         <section className="quality-band">
           <div className="quality-inner page-width reveal">
             <div className="quality-mark"><Leaf size={22} strokeWidth={1.3} /></div>
-            <div className="quality-title"><p className="eyebrow">El cuidado está en los detalles</p><h2>Sentirse bien<br />también es <em>calidad.</em></h2></div>
-            <div className="quality-copy"><p>El tacto, la caída, ese ajuste que te deja moverte con libertad. Miramos cada detalle para que la prenda no solo se vea bien: se sienta bien contigo.</p><span>Rib, licra, blonda y más. Cada referencia tiene su propia textura e historia.</span><a className="text-link" href="#archivo">Ver materiales en la colección <ArrowUpRight size={14} /></a></div>
+            <div className="quality-title"><p className="eyebrow">EL ORIGEN TAMBIÉN SE VISTE</p><h2>De aquí.<br />Con orgullo.<br /><em>Con estilo.</em></h2></div>
+            <div className="quality-copy"><p>Desde Medellín celebramos la moda que se lleva con identidad. Cada ficha muestra las fotos y los detalles publicados para que elijas con confianza.</p><span>¿Quieres saber más sobre una prenda? Nuestro equipo te confirma disponibilidad y características por WhatsApp.</span><a className="text-link" href="#archivo">Conoce cada referencia <ArrowUpRight size={16} /></a></div>
             <span className="quality-watermark" aria-hidden="true">U.</span>
           </div>
         </section>
@@ -287,22 +318,22 @@ function App() {
         <section className="story-section page-width section-pad" id="historia">
           <div className="story-visual reveal">
             <img src={catalogue.find((item) => item.category === 'Vestidos')?.photos?.[0]} alt="Vestido de la colección UNICA" loading="lazy" />
-            <span className="story-photo-caption">Medellín, con cariño.</span>
+            <span className="story-photo-caption">Medellín, Colombia</span>
             <div className="story-stamp glass-panel"><span>Hecha</span><strong>para ti</strong><i>✳</i></div>
           </div>
           <div className="story-copy reveal">
-            <p className="eyebrow">Una marca de Medellín <span className="eyebrow-line" /></p>
-            <h2>No tienes que<br />parecerte a nadie.<br /><em>Ese es el punto.</em></h2>
-            <p>UNICA nace de una idea sencilla: vestirte debería acercarte a ti. Por eso elegimos prendas que te invitan a jugar, combinar y sentirte cómoda en tu propia forma de estar en el mundo.</p>
-            <p>Somos de Medellín, Colombia. Lo nuestro es la cercanía, el detalle y esa manera tan nuestra de hacer las cosas con intención.</p>
-            <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="button button-outline">Conoce nuestra historia <ArrowUpRight size={15} /></a>
+            <p className="eyebrow">02 / NUESTRA RAÍZ <span className="eyebrow-line" /></p>
+            <h2>Nacida en Medellín.<br />Pensada para vestir<br /><em>a tu manera.</em></h2>
+            <p>UNICA es una marca colombiana con raíz en Medellín, una ciudad que vive la moda con creatividad, carácter y movimiento.</p>
+            <p>Desde aquí compartimos una selección para todo el país: prendas para celebrar tu identidad y construir tu propio estilo, sin uniformes.</p>
+            <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="button button-outline">Descubre la marca colombiana <ArrowUpRight size={17} /></a>
           </div>
         </section>
 
         <section className="archive-section section-pad" id="archivo">
           <div className="page-width">
             <div className="section-heading archive-heading reveal">
-              <div><p className="eyebrow">El universo UNICA <span className="eyebrow-line" /></p><h2>Una prenda.<br /><em>Mil maneras.</em></h2><p className="section-intro">Explora las referencias, telas y detalles de nuestra colección.</p></div>
+              <div><p className="eyebrow">03 / MODA HECHA PARA EXPRESARTE <span className="eyebrow-line" /></p><h2>Colombia se viste<br /><em>a su manera.</em></h2><p className="section-intro">Busca tu próxima prenda entre nuestras referencias y explora todos sus detalles.</p></div>
               <div className="archive-aside"><span>{catalogue.length.toString().padStart(2, '0')} referencias</span><span>{catalogue.reduce((total, item) => total + item.photos.length, 0)} fotografías</span></div>
             </div>
             <div className="filter-row archive-filters" role="group" aria-label="Filtrar el archivo">
@@ -335,17 +366,17 @@ function App() {
           <span className="instagram-orbit" aria-hidden="true">@</span>
         </section>
 
-        <section className="closing-line page-width"><p>Con cariño, desde Medellín.</p><span>UNICA <i>✳</i> PARA SENTIRTE TÚ</span></section>
+        <section className="closing-line page-width"><p>Con orgullo, desde Medellín para Colombia.</p><span>UNICA <i>✳</i> MODA DE AQUÍ</span></section>
       </main>
 
       <footer className="site-footer">
         <div className="footer-main page-width">
-          <div className="footer-brand"><a href="#inicio"><img src={logoUrl} alt="UNICA" /></a><p>Vestir como se siente ser tú.<br />Medellín, Colombia.</p></div>
-          <div className="footer-links"><span className="eyebrow">Explora</span><a href="#coleccion">Colección</a><a href="#historia">Nuestra marca</a><a href="#archivo">Archivo</a></div>
+          <div className="footer-brand"><a href="#inicio"><img src={logoUrl} alt="UNICA" /></a><p>Moda con raíz en Medellín.<br />Orgullo para vestir donde estés.</p></div>
+          <div className="footer-links"><span className="eyebrow">Descubre</span><a href="#coleccion">Moda colombiana</a><a href="#historia">Nuestra raíz</a><a href="#archivo">Referencias</a></div>
           <div className="footer-links"><span className="eyebrow">Hablemos</span><a href={INSTAGRAM_URL} target="_blank" rel="noreferrer">Instagram <ArrowUpRight size={13} /></a><a href={whatsappUrl('Hola, UNICA. Quisiera conocer más de sus prendas.')} target="_blank" rel="noreferrer">WhatsApp <ArrowUpRight size={13} /></a></div>
-          <div className="footer-note"><span>UNICA / EST. MEDELLÍN</span><p>Vestirte también puede ser una forma de volver a ti.</p><button className="back-top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Volver al inicio"><ArrowLeft size={17} /></button></div>
+          <div className="footer-note"><span>UNICA / MEDELLÍN, COLOMBIA</span><p>La moda de aquí, llevada a tu manera.</p><button className="back-top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Volver al inicio"><ArrowLeft size={17} /></button></div>
         </div>
-        <div className="footer-bottom page-width"><span>© UNICA · Medellín, Colombia</span><span>Vestir con intención. Sentir sin permiso.</span></div>
+        <div className="footer-bottom page-width"><span>© UNICA · Medellín, Colombia</span><span>Moda de aquí. Orgullo que se viste.</span></div>
       </footer>
 
       <CartDrawer
@@ -359,11 +390,12 @@ function App() {
       />
       {selectedItem && (
         <ProductDialog
+          key={selectedItem.id}
           item={selectedItem}
           photoIndex={selectedPhoto}
           setPhotoIndex={setSelectedPhoto}
           onClose={() => setSelectedItem(null)}
-          onAdd={() => addToCart(selectedItem)}
+          onAdd={(variants) => addToCart(selectedItem, variants)}
           onAsk={() => window.open(whatsappUrl(`Hola, UNICA. Quisiera consultar disponibilidad y precio de ${selectedItem.title}.`), '_blank', 'noopener,noreferrer')}
         />
       )}
@@ -377,19 +409,24 @@ function ProductCard({ item, index, onOpen }) {
     <article className="product-card reveal" style={{ '--card-index': index }}>
       <button className="product-image-button" onClick={() => onOpen(item)} aria-label={`Ver ${name}`}>
         <img src={item.photos[0]} alt={name} loading={index < 4 ? 'eager' : 'lazy'} />
-        <span className="product-image-count">{item.photos.length} fotos</span>
+        <span className="product-image-count">{item.photos.length} {item.photos.length === 1 ? 'foto' : 'fotos'}</span>
         <span className="product-image-arrow"><ArrowUpRight size={17} /></span>
       </button>
       <div className="product-info">
         <div className="product-info-top"><span>{item.category}</span><span className="product-price">{formatPrice(item.price)}</span></div>
         <button className="product-name" onClick={() => onOpen(item)}>{name}</button>
-        <button className="product-add" onClick={() => onOpen(item)} aria-label={`Ver opciones de ${name}`}><span>Ver prenda</span><ArrowRight size={15} /></button>
+        <div className="product-details">{productDetails(item)}</div>
+        <button className="product-add" onClick={() => onOpen(item)} aria-label={`${item.price ? 'Elegir opciones de' : 'Consultar'} ${name}`}><span>{item.price ? 'Elegir opciones' : 'Consultar prenda'}</span><ArrowRight size={18} /></button>
       </div>
     </article>
   )
 }
 
 function ProductDialog({ item, photoIndex, setPhotoIndex, onClose, onAdd, onAsk }) {
+  const sizes = item.details?.filter((detail) => detail.toLowerCase().startsWith('talla ')) || []
+  const materials = item.details?.filter((detail) => !detail.toLowerCase().startsWith('talla ')) || []
+  const [selectedSize, setSelectedSize] = useState(sizes[0] || '')
+  const [selectedColor, setSelectedColor] = useState(item.colors?.[0] || '')
   const hasPrice = Boolean(item.price)
   const photo = item.photos[photoIndex] || item.photos[0]
   const step = (direction) => setPhotoIndex((value) => (value + direction + item.photos.length) % item.photos.length)
@@ -401,8 +438,11 @@ function ProductDialog({ item, photoIndex, setPhotoIndex, onClose, onAdd, onAsk 
           {item.photos.length > 1 && <><button className="photo-nav previous" onClick={() => step(-1)} aria-label="Foto anterior"><ChevronLeft size={20} /></button><button className="photo-nav next" onClick={() => step(1)} aria-label="Foto siguiente"><ChevronRight size={20} /></button></>}
           <span className="dialog-photo-number">{String(photoIndex + 1).padStart(2, '0')} / {String(item.photos.length).padStart(2, '0')}</span>
         </div>
-        <div className="dialog-copy"><p className="eyebrow">{item.category} <span className="eyebrow-line" /></p><h2>{hasPrice ? productName(item) : item.title}</h2><p className="dialog-description">Una referencia UNICA para vestirla a tu manera. Escríbenos y te contamos disponibilidad, materiales y detalles de la prenda.</p>{hasPrice ? <><strong className="dialog-price">{formatPrice(item.price)}</strong><span className="dialog-note">Precio de referencia · confirma disponibilidad por WhatsApp</span></> : <strong className="dialog-price dialog-consult">Consulta su disponibilidad</strong>}
-          <div className="dialog-actions">{hasPrice ? <button className="button button-primary" onClick={onAdd}>Agregar al carrito <ShoppingBag size={16} /></button> : <button className="button button-primary" onClick={onAsk}>Consultar por WhatsApp <MessageCircle size={16} /></button>}<button className="text-link dialog-instagram" onClick={() => window.open(INSTAGRAM_URL, '_blank', 'noopener,noreferrer')}>Ver en Instagram <ArrowUpRight size={14} /></button></div>
+        <div className="dialog-copy"><p className="eyebrow">{item.category} · MODA COLOMBIANA <span className="eyebrow-line" /></p><h2>{hasPrice ? productName(item) : item.title}</h2><p className="dialog-description">Una prenda de UNICA, marca nacida en Medellín. Revisa las opciones publicadas y escríbenos para confirmar cualquier detalle antes de pedir.</p>{hasPrice ? <><strong className="dialog-price">{formatPrice(item.price)}</strong><span className="dialog-note">Precio compartido por UNICA · confirma disponibilidad por WhatsApp</span></> : <strong className="dialog-price dialog-consult">Consulta su disponibilidad</strong>}
+          {materials.length > 0 && <p className="dialog-attributes"><span>Material</span>{materials.join(' · ')}</p>}
+          {sizes.length > 0 && <fieldset className="variant-group"><legend>Talla publicada</legend><div className="variant-options">{sizes.map((size) => <button key={size} type="button" className={`variant-option ${selectedSize === size ? 'active' : ''}`} onClick={() => setSelectedSize(size)}>{size.replace(/^talla\s*/i, '')}</button>)}</div></fieldset>}
+          {item.colors?.length > 0 && <fieldset className="variant-group"><legend>Colores publicados</legend><div className="variant-options">{item.colors.map((color) => <button key={color} type="button" className={`variant-option ${selectedColor === color ? 'active' : ''}`} onClick={() => setSelectedColor(color)}>{color}</button>)}</div></fieldset>}
+          <div className="dialog-actions">{hasPrice ? <button className="button button-primary" onClick={() => onAdd({ size: selectedSize, color: selectedColor })}>Agregar al carrito <ShoppingBag size={18} /></button> : <button className="button button-primary" onClick={onAsk}>Consultar por WhatsApp <MessageCircle size={18} /></button>}<button className="text-link dialog-instagram" onClick={() => window.open(INSTAGRAM_URL, '_blank', 'noopener,noreferrer')}>Ver en Instagram <ArrowUpRight size={16} /></button></div>
         </div>
       </section>
     </div>
@@ -416,7 +456,7 @@ function CartDrawer({ cart, cartOpen, setCartOpen, changeQuantity, total, count,
       <aside className="cart-drawer glass-panel" role="dialog" aria-modal="true" aria-label="Tu carrito" onClick={(event) => event.stopPropagation()}>
         <div className="drawer-header"><div><p className="eyebrow">Tu selección</p><h2>El carrito <em>UNICA.</em></h2></div><button className="icon-button" onClick={() => setCartOpen(false)} aria-label="Cerrar carrito"><X size={20} /></button></div>
         {cart.length ? <>
-          <div className="cart-items">{cart.map((item) => <article className="cart-item" key={item.id}><img src={item.image} alt={item.title} /><div className="cart-item-copy"><span className="eyebrow">UNICA · Selección</span><strong>{item.title}</strong><span className="cart-item-price">{formatPrice(item.price)}</span><div className="quantity-control"><button onClick={() => changeQuantity(item.id, -1)} aria-label={`Quitar una unidad de ${item.title}`}><Minus size={13} /></button><span>{item.quantity}</span><button onClick={() => changeQuantity(item.id, 1)} aria-label={`Agregar una unidad de ${item.title}`}><Plus size={13} /></button></div></div><button className="remove-item" onClick={() => changeQuantity(item.id, -item.quantity)} aria-label={`Eliminar ${item.title}`}><Trash2 size={16} /></button></article>)}</div>
+          <div className="cart-items">{cart.map((item) => <article className="cart-item" key={item.id}><img src={item.image} alt={item.title} /><div className="cart-item-copy"><span className="eyebrow">UNICA · Selección</span><strong>{item.title}</strong>{item.variant && <span className="cart-item-variant">{item.variant}</span>}<span className="cart-item-price">{formatPrice(item.price)}</span><div className="quantity-control"><button onClick={() => changeQuantity(item.id, -1)} aria-label={`Quitar una unidad de ${item.title}`}><Minus size={13} /></button><span>{item.quantity}</span><button onClick={() => changeQuantity(item.id, 1)} aria-label={`Agregar una unidad de ${item.title}`}><Plus size={13} /></button></div></div><button className="remove-item" onClick={() => changeQuantity(item.id, -item.quantity)} aria-label={`Eliminar ${item.title}`}><Trash2 size={16} /></button></article>)}</div>
           <div className="cart-summary"><div><span>Prendas</span><span>{count}</span></div><div className="cart-total"><span>Subtotal de referencia</span><strong>{formatPrice(total)}</strong></div><p>El envío y la disponibilidad se confirman por WhatsApp antes de finalizar.</p><a className="button button-primary checkout-button" href={checkoutUrl} target="_blank" rel="noreferrer"><MessageCircle size={17} /> Continuar por WhatsApp <ArrowUpRight size={15} /></a><button className="continue-shopping" onClick={() => setCartOpen(false)}>Seguir explorando <ArrowRight size={14} /></button></div>
         </> : <div className="cart-empty"><span><ShoppingBag size={22} /></span><h3>Tu próxima prenda<br /><em>empieza aquí.</em></h3><p>Descubre la colección y guarda lo que te hace sentir tú.</p><button className="button button-primary" onClick={() => setCartOpen(false)}>Explorar colección <ArrowRight size={15} /></button></div>}
       </aside>
