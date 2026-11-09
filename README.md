@@ -20,6 +20,12 @@ npm run build
 
 El resultado queda en `dist/` y se puede publicar en un hosting estático compatible con Vite.
 
+## SEO e indexación
+
+La aplicación se monta desde `src/main.jsx` en el elemento `#root` de `index.html`. El HTML de producción incluye canonical, metadatos Open Graph, tarjeta para redes y datos estructurados `ClothingStore`. `public/robots.txt` permite el rastreo y declara `public/sitemap.xml`, que apunta a la página principal en `https://unica.presentto.online/`.
+
+Una vez que el hosting sirva el sitio en ese dominio con HTTPS, registra la propiedad en Google Search Console y envía `https://unica.presentto.online/sitemap.xml`. Los archivos preparan el rastreo, pero la indexación efectiva depende de que el dominio esté accesible y de los tiempos y decisiones del buscador.
+
 ## Catálogo y fotografías
 
 El archivo original se conserva en `assets/img/img-ropa-y-modelos.zip`. Para regenerar el archivo visual:

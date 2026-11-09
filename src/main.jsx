@@ -20,6 +20,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { createRoot } from 'react-dom/client'
 import logoUrl from '../assets/img/logo-unica-client.png'
 import './index.css'
 
@@ -424,3 +425,7 @@ function CartDrawer({ cart, cartOpen, setCartOpen, changeQuantity, total, count,
 }
 
 export default App
+
+const rootElement = document.getElementById('root')
+if (!rootElement) throw new Error('No se encontró el elemento raíz de UNICA.')
+createRoot(rootElement).render(<App />)
