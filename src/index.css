@@ -76,7 +76,7 @@ img { display: block; max-width: 100%; }
 .announcement-bar a { position: absolute; right: 48px; display: flex; align-items: center; gap: 5px; font-weight: 600; }
 .announcement-separator { color: var(--accent); font-size: 9px; }
 .site-header { position: sticky; z-index: 20; top: 0; display: flex; height: 76px; align-items: center; justify-content: space-between; margin: 0 auto; padding: 0 max(48px, calc((100% - 1320px) / 2)); background: var(--surface-glass-heavy); border-width: 0 0 1px; }
-.brand-mark { display: block; width: 48px; height: 48px; overflow: hidden; border-radius: 50%; background: #fff; }
+.brand-mark { display: block; width: 48px; height: 48px; overflow: visible; border-radius: 0; background: transparent; }
 .brand-mark img { width: 100%; height: 100%; object-fit: cover; }
 .main-nav { display: flex; align-items: center; gap: 39px; margin-left: 35px; }
 .main-nav a { position: relative; color: var(--ink-soft); font-size: 10px; font-weight: 500; transition: color .2s ease; }
@@ -210,7 +210,7 @@ img { display: block; max-width: 100%; }
 .closing-line i { padding-inline: 5px; color: var(--accent); font-style: normal; }
 .site-footer { background: var(--surface); border-top: 1px solid var(--line); }
 .footer-main { display: grid; grid-template-columns: 1.2fr .7fr .8fr 1fr; gap: 35px; padding-block: 45px 40px; }
-.footer-brand > a { display: block; width: 61px; height: 61px; overflow: hidden; border-radius: 50%; background: #fff; }
+.footer-brand > a { display: block; width: 61px; height: 61px; overflow: visible; border-radius: 0; background: transparent; }
 .footer-brand img { width: 100%; height: 100%; object-fit: cover; }
 .footer-brand p { margin: 13px 0 0; color: var(--muted); font-size: 9px; line-height: 1.8; }
 .footer-links { display: grid; justify-items: start; align-content: start; gap: 13px; }

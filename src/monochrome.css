@@ -56,8 +56,9 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .announcement-bar a { right: 24px; gap: 8px; font-size: 10px; }
 .announcement-separator { color: var(--muted); }
 .site-header { height: 82px; padding-inline: max(16px, calc((100% - 1440px) / 2)); border-color: var(--line); background: var(--surface-glass-heavy); }
-.brand-mark { width: 54px; height: 54px; background: #fff; }
-.brand-mark img, .footer-brand img { filter: grayscale(1) contrast(1.25); }
+.brand-mark { width: 150px; height: 50px; overflow: visible; border-radius: 0; background: transparent; }
+.brand-mark img, .footer-brand img { object-fit: cover; object-position: center; filter: grayscale(1) contrast(4); mix-blend-mode: screen; }
+:root[data-theme="light"] .brand-mark img, :root[data-theme="light"] .footer-brand img { filter: grayscale(1) contrast(4) invert(1); mix-blend-mode: multiply; }
 .main-nav { gap: clamp(18px, 3vw, 44px); }
 .main-nav a { color: var(--ink-soft); font-size: 12px; font-weight: 600; }
 .main-nav a::after { background: var(--accent); }
@@ -181,7 +182,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .closing-line i { color: var(--ink); }
 .site-footer { background: var(--surface); border-color: var(--line); }
 .footer-main { grid-template-columns: 1fr 1fr; gap: 27px 19px; padding-block: 36px; }
-.footer-brand > a { width: 61px; height: 61px; background: #fff; }
+.footer-brand > a { width: 175px; height: 58px; overflow: visible; border-radius: 0; background: transparent; }
 .footer-brand p { color: var(--muted); font-size: 11px; line-height: 1.7; }
 .footer-links { gap: 13px; }
 .footer-links .eyebrow { margin-bottom: 2px; font-size: 10px; }
@@ -294,7 +295,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   .section-pad { padding-block: 126px; }
   .announcement-bar a { right: max(48px, calc((100% - 1440px) / 2)); }
   .site-header { height: 86px; padding-inline: max(48px, calc((100% - 1440px) / 2)); }
-  .brand-mark { width: 60px; height: 60px; }
+  .brand-mark { width: 174px; height: 58px; }
   .hero-section { min-height: min(800px, calc(100svh - 122px)); grid-template-columns: .9fr 1.1fr; align-items: center; gap: 8%; padding-block: 48px 75px; }
   .hero-copy h1 { font-size: 100px; }
   .hero-description { max-width: 490px; font-size: 17px; }
@@ -356,6 +357,8 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   .main-nav a { min-height: 51px; display: flex; align-items: center; border-bottom: 1px solid var(--line); font-size: 14px; }
   .main-nav a::after { display: none; }
   .menu-toggle { display: grid; }
+  .brand-mark { width: 120px; height: 40px; }
+  .footer-brand > a { width: 150px; height: 50px; }
   .cart-trigger { width: 51px; justify-content: center; gap: 6px; padding-inline: 5px; }
   .cart-trigger-label { display: none; }
   .filter-row { scroll-snap-type: x mandatory; }
